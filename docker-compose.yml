@@ -1,0 +1,74 @@
+services:
+  # ─── PostgreSQL + pgvector ───────────────────────────
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: rag-postgres
+    restart: unless-stopped
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-raguser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ragpassword123}
+      POSTGRES_DB: ${DB_NAME:-ragdb}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME:-raguser} -d ${DB_NAME:-ragdb}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis (BullMQ) ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: rag-redis
+    restart: unless-stopped
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+
+  # ─── NestJS API ─────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag-api
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-raguser}
+      DB_PASSWORD: ${DB_PASSWORD:-ragpassword123}
+      DB_NAME: ${DB_NAME:-ragdb}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production-2026}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
+      CHUNK_SIZE: ${CHUNK_SIZE:-1000}
+      CHUNK_OVERLAP: ${CHUNK_OVERLAP:-200}
+      NODE_ENV: production
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+
+volumes:
+  pgdata:
+  redisdata:
+
+  uploads:
