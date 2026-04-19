@@ -24,7 +24,10 @@ import {
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { DocumentsService } from './documents.service';
+import {
+  DocumentsService,
+  type ExtractedInfoResponse,
+} from './documents.service';
 
 const ALLOWED_MIMETYPES = [
   'application/pdf',
@@ -106,6 +109,17 @@ export class DocumentsController {
     @CurrentUser() user: { id: string },
   ) {
     return this.documentsService.findOneByUser(id, user.id);
+  }
+
+  @Get(':id/extracted-info')
+  @ApiOperation({ summary: 'Ver informacion extraida del documento' })
+  @ApiResponse({ status: 200, description: 'Resumen de contenido extraido y fragmentos de vista previa' })
+  @ApiResponse({ status: 404, description: 'Documento no encontrado' })
+  async extractedInfo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ): Promise<ExtractedInfoResponse> {
+    return this.documentsService.getExtractedInfoByUser(id, user.id);
   }
 
   @Delete(':id')
