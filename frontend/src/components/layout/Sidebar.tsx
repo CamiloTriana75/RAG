@@ -8,9 +8,15 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { userEmail, logout } = useAuth();
 
-  const navItems = [
+  const navItems: Array<{
+    href: string;
+    label: string;
+    icon: string;
+    disabled?: boolean;
+    badge?: string;
+  }> = [
     { href: "/documents", label: "Extraccion", icon: "folder_open" },
-    { href: "/chat", label: "Consultas IA", icon: "forum", disabled: true, badge: "Fase 2" },
+    { href: "/chat", label: "Consultas IA", icon: "forum" },
   ];
 
   const isItemActive = (href: string) =>

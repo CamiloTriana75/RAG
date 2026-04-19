@@ -344,6 +344,88 @@ select {
     linear-gradient(145deg, var(--color-surface-container-low) 0%, var(--color-surface-bright) 55%, var(--color-surface) 100%);
 }
 
+.chat-markdown p {
+  margin: 0.5rem 0;
+}
+
+.chat-markdown p:first-child {
+  margin-top: 0;
+}
+
+.chat-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3 {
+  margin: 0.8rem 0 0.4rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.chat-markdown ul,
+.chat-markdown ol {
+  margin: 0.5rem 0;
+  padding-left: 1.15rem;
+}
+
+.chat-markdown li {
+  margin: 0.2rem 0;
+}
+
+.chat-markdown code {
+  padding: 0.12rem 0.35rem;
+  border-radius: 0.25rem;
+  background: color-mix(in oklab, var(--color-surface-container-low) 82%, black 4%);
+  font-size: 0.83em;
+}
+
+.chat-markdown pre {
+  margin: 0.55rem 0;
+  overflow-x: auto;
+  border-radius: 0.45rem;
+  padding: 0.65rem 0.75rem;
+  background: color-mix(in oklab, var(--color-surface-container-low) 86%, black 8%);
+}
+
+.chat-markdown pre code {
+  padding: 0;
+  background: transparent;
+}
+
+.chat-caret {
+  display: inline-block;
+  width: 0.5rem;
+  height: 1em;
+  margin-left: 0.1rem;
+  transform: translateY(0.12em);
+  background: var(--color-primary);
+  animation: pulse 0.8s infinite;
+}
+
+.chat-typing-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.chat-typing-dot {
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--color-on-surface-variant);
+  animation: typingDot 1.2s ease-in-out infinite;
+}
+
+.chat-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.chat-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 .grid-overlay {
   background-image:
     linear-gradient(to right, rgba(0, 25, 60, 0.045) 1px, transparent 1px),

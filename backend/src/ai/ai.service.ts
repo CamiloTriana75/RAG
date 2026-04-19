@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, HttpException } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -182,6 +182,16 @@ ${context}`,
         const status = error?.response?.status;
         const message = error?.response?.data?.error?.message || error?.message || 'Error desconocido';
 
+        // 401/403 indican problema de credenciales a nivel de cuenta/API key;
+        // reintentar con otros modelos no ayuda.
+        if (status === 401 || status === 403) {
+          this.logger.error(
+            `Autenticacion OpenRouter invalida (${status}): ${message}. Revisa OPENROUTER_API_KEY en backend/.env`,
+          );
+          lastError = error;
+          break;
+        }
+
         // Si es rate limit en modelo free y aún no hemos reintentado, espera antes de siguiente
         if (status === 429 && retryCount < MAX_RETRIES && !isPaidModel) {
           this.logger.warn(`Rate limit (429) en ${model}. Esperando antes de reintentar...`);
@@ -203,9 +213,21 @@ ${context}`,
       }
     }
 
-    // Si terminó el bucle y todos fallaron, lanzamos el error definitivo
+    // Si terminó el bucle y todos fallaron, devolvemos una respuesta degradada
     const finalErrorMessage = lastError?.response?.data?.error?.message || lastError?.message || 'Error desconocido';
     this.logger.error(`OpenRouter falló después de intentar todos los modelos: ${finalErrorMessage}`);
-    throw new HttpException(`OpenRouter falló: ${finalErrorMessage}`, 500);
+
+    if (lastError?.response?.status === 401 || lastError?.response?.status === 403) {
+      return (
+        'OpenRouter rechazó la autenticación de este backend (credenciales inválidas). ' +
+        'Mientras se corrige la API key, revisa las fuentes recuperadas abajo para ver el contexto encontrado.'
+      );
+    }
+
+    return (
+      'No pude generar una respuesta final con OpenRouter en este momento. ' +
+      'Sin embargo, recuperé fragmentos relevantes de tus documentos en la sección de fuentes. ' +
+      'Intenta de nuevo en unos segundos.'
+    );
   }
 }

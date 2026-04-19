@@ -101,18 +101,52 @@ function normalizeDocumentStatus(status: unknown): Document["status"] {
   return "pending";
 }
 
-function normalizeDocument(raw: Record<string, unknown>): Document {
-  const rawChunks = raw.chunksCount ?? raw.totalChunks;
+function normalizeDocument(raw: Document | Record<string, unknown>): Document {
+  const source = raw as Record<string, unknown>;
+  const rawChunks = source.chunksCount ?? source.totalChunks;
   const parsedChunks = Number(rawChunks);
+  const fallbackTimestamp = new Date().toISOString();
+
+  const id = typeof source.id === "string" ? source.id : "";
+  const originalName =
+    typeof source.originalName === "string"
+      ? source.originalName
+      : typeof source.original_name === "string"
+      ? source.original_name
+      : "Documento sin nombre";
+  const mimeType =
+    typeof source.mimeType === "string"
+      ? source.mimeType
+      : typeof source.mime_type === "string"
+      ? source.mime_type
+      : "application/octet-stream";
+  const size = Number(source.size);
+  const createdAt =
+    typeof source.createdAt === "string"
+      ? source.createdAt
+      : typeof source.created_at === "string"
+      ? source.created_at
+      : fallbackTimestamp;
+  const updatedAt =
+    typeof source.updatedAt === "string"
+      ? source.updatedAt
+      : typeof source.updated_at === "string"
+      ? source.updated_at
+      : createdAt;
 
   return {
-    ...(raw as Document),
-    status: normalizeDocumentStatus(raw.status),
+    id,
+    originalName,
+    mimeType,
+    size: Number.isFinite(size) ? size : 0,
+    createdAt,
+    updatedAt,
+    status: normalizeDocumentStatus(source.status),
     chunksCount: Number.isFinite(parsedChunks) ? parsedChunks : undefined,
     totalChunks: Number.isFinite(parsedChunks) ? parsedChunks : undefined,
     errorMessage:
-      raw.errorMessage === null || typeof raw.errorMessage === "string"
-        ? (raw.errorMessage as string | null)
+      source.errorMessage === null || typeof source.errorMessage === "string"
+        ? (source.errorMessage as string | null)
         : undefined,
   };
 }
@@ -315,11 +349,11 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
 
 export async function getDocuments(): Promise<Document[]> {
   if (isDemoModeActive()) {
-    return syncDemoDocumentsStatus().map((doc) => normalizeDocument(doc as Record<string, unknown>));
+    return syncDemoDocumentsStatus().map((doc) => normalizeDocument(doc));
   }
 
   const data = await apiFetch<Document[]>("documents");
-  return data.map((doc) => normalizeDocument(doc as Record<string, unknown>));
+  return data.map((doc) => normalizeDocument(doc));
 }
 
 export async function getDocument(id: string): Promise<Document> {
@@ -331,11 +365,11 @@ export async function getDocument(id: string): Promise<Document> {
       throw new Error("Documento no encontrado en modo demo");
     }
 
-    return normalizeDocument(found as Record<string, unknown>);
+    return normalizeDocument(found);
   }
 
   const data = await apiFetch<Document>(`documents/${id}`);
-  return normalizeDocument(data as Record<string, unknown>);
+  return normalizeDocument(data);
 }
 
 export async function getDocumentExtractedInfo(

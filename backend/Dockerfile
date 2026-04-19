@@ -1,5 +1,5 @@
 # ── Stage 1: Build ──────────────────────────────────
-FROM node:20-alpine AS build
+FROM node:20-bookworm-slim AS build
 
 WORKDIR /app
 
@@ -10,19 +10,19 @@ COPY . .
 RUN npm run build
 
 # ── Stage 2: Production ────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-bookworm-slim AS production
 
 WORKDIR /app
 
-RUN addgroup -g 1001 -S nestjs && \
-    adduser -S nestjs -u 1001
+RUN groupadd -g 1001 nestjs && \
+    useradd -m -u 1001 -g nestjs nestjs
 
 COPY package*.json ./
-RUN npm ci --only=production && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 
-RUN mkdir -p uploads && chown -R nestjs:nestjs uploads
+RUN mkdir -p uploads && chown -R nestjs:nestjs /app
 
 USER nestjs
 
