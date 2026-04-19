@@ -1,13 +1,14 @@
-﻿# Servidor RAG Con NestJS
+﻿# Plataforma RAG Fullstack Con NestJS Y Next.js
 
-Servidor RAG construido con NestJS para autenticacion, ingesta de documentos, indexacion semantica y respuestas con contexto usando OpenRouter y pgvector.
+Plataforma RAG fullstack con backend NestJS y frontend Next.js para autenticacion, ingesta de documentos, indexacion semantica y consulta guiada.
 
 ## Estado Actual Del Proyecto
 
-- Compilacion: `npm run build` correcta.
-- Prueba E2E base: `npm run test:e2e` correcta.
+- Compilacion fullstack: `npm run build:all` correcta.
+- Prueba E2E backend: `npm run test:e2e` correcta.
 - API documentada con Swagger en `/api/docs`.
 - Flujo principal completo: registro/login -> carga -> ingesta -> consulta RAG.
+- Frontend base disponible en `frontend/` con autenticacion y gestion documental.
 
 ## Arquitectura
 
@@ -33,6 +34,13 @@ Servidor RAG construido con NestJS para autenticacion, ingesta de documentos, in
 | `ai` | Embeddings locales y chat completion con OpenRouter |
 | `health` | Estado base del sistema y configuracion de OpenRouter |
 
+### Aplicaciones Del Repositorio
+
+| Aplicacion | Ruta | Stack |
+|---|---|---|
+| Backend API | `backend/` | NestJS + TypeORM + BullMQ |
+| Frontend Web | `frontend/` | Next.js App Router + React |
+
 ## Inicio Rapido
 
 ### Prerrequisitos
@@ -45,33 +53,113 @@ Servidor RAG construido con NestJS para autenticacion, ingesta de documentos, in
 1. Clona el repositorio y prepara entorno:
 
 ```bash
-git clone https://github.com/tu-usuario/rag-backend.git
-cd rag-backend
-cp .env.example .env
+git clone https://github.com/CamiloTriana75/RAG.git
+cd RAG
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
 2. Levanta infraestructura base:
 
 ```bash
-docker compose up -d postgres redis
+docker compose -f backend/docker-compose.yml --env-file backend/.env up -d postgres redis
 ```
 
 3. Inicializa la columna vector e indices:
 
 ```bash
-docker exec -i rag-postgres psql -U raguser -d ragdb < scripts/init-db.sql
+docker exec -i rag-postgres psql -U raguser -d ragdb < backend/scripts/init-db.sql
 ```
 
-4. Instala dependencias e inicia API:
+4. Instala dependencias de backend y frontend:
 
 ```bash
-npm install
-npm run start:dev
+npm run install:all
 ```
 
-5. Abre Swagger:
+5. Inicia backend y frontend (en terminales separadas):
 
-- http://localhost:3000/api/docs
+```bash
+npm run dev:backend
+npm run dev:frontend
+```
+
+O en una sola terminal:
+
+```bash
+npm run dev:all
+```
+
+Tambien tienes scripts de coordinacion desde raiz:
+
+```bash
+npm run build:all
+npm run lint:all
+npm run test:all
+```
+
+6. Abre API y web:
+
+- API Swagger: http://localhost:3001/api/docs
+- Frontend: http://localhost:3000 (o el puerto que asigne Next)
+
+## Despliegue Completo (Frontend + Backend + BD)
+
+El repositorio incluye un stack de despliegue en `docker-compose.deploy.yml` con:
+
+- Frontend Next.js
+- Backend NestJS
+- PostgreSQL (pgvector)
+- Redis
+- pgAdmin para visualizar BD
+
+### 1) Preparar variables de despliegue
+
+```bash
+cp .env.deploy.example .env.deploy
+```
+
+Edita `.env.deploy` y ajusta especialmente:
+
+- `OPENROUTER_API_KEY`
+- `JWT_SECRET`
+- `NEXT_PUBLIC_API_URL` (URL publica del backend)
+- Passwords de base de datos y pgAdmin
+
+### 2) Levantar todo el stack
+
+```bash
+docker compose -f docker-compose.deploy.yml --env-file .env.deploy up -d --build
+```
+
+Tambien tienes scripts de atajo desde raiz:
+
+```bash
+npm run deploy:up
+npm run deploy:logs
+npm run deploy:down
+```
+
+### 3) Inicializar pgvector e indices
+
+En Linux/macOS (bash):
+
+```bash
+docker compose -f docker-compose.deploy.yml --env-file .env.deploy exec -T postgres psql -U raguser -d ragdb < backend/scripts/init-db.sql
+```
+
+En Windows PowerShell:
+
+```powershell
+Get-Content backend/scripts/init-db.sql | docker compose -f docker-compose.deploy.yml --env-file .env.deploy exec -T postgres psql -U raguser -d ragdb
+```
+
+### 4) Accesos
+
+- Frontend: http://localhost:3100
+- API: http://localhost:3101
+- Swagger: http://localhost:3101/api/docs
+- pgAdmin: http://localhost:5050
 
 ## Variables De Entorno Clave
 
@@ -80,6 +168,7 @@ npm run start:dev
 | `OPENROUTER_API_KEY` | Si | Llave de OpenRouter para generar respuestas |
 | `OPENROUTER_MODELS` | No | Lista de modelos separados por coma en orden de preferencia |
 | `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME` | Si | Conexion PostgreSQL |
+| `DB_SYNCHRONIZE` | Recomendado | Controla sincronizacion de esquema por TypeORM (`true`/`false`) |
 | `REDIS_HOST`, `REDIS_PORT` | Si | Cola BullMQ |
 | `JWT_SECRET` | Si | Firma de tokens JWT |
 | `CHUNK_SIZE`, `CHUNK_OVERLAP` | No | Parametros de fragmentacion de texto |
@@ -97,9 +186,9 @@ OPENROUTER_MODELS=openai/gpt-4o-mini,openai/gpt-3.5-turbo,anthropic/claude-3.5-s
 ## Calidad Y Verificacion
 
 ```bash
-npm run build
-npm run lint
-npm run test
+npm run build:all
+npm run lint:all
+npm run test:all
 npm run test:e2e
 ```
 
@@ -108,6 +197,7 @@ npm run test:e2e
 - [Guia de contribucion](CONTRIBUTING.md)
 - [Codigo de conducta](CODE_OF_CONDUCT.md)
 - [Indice de documentacion tecnica](docs/README.md)
+- [Arquitectura fullstack organizada](docs/ARQUITECTURA_FULLSTACK.md)
 - [Catalogo de incidencias, hitos y Proyecto de GitHub](docs/SCALING_ISSUES_CUSTOMIZABLE.md)
 
 ## Contribuciones

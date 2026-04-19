@@ -23,16 +23,24 @@ import { AppController } from './app.controller';
     // ── TypeORM + PostgreSQL + pgvector ─────────────
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres' as const,
-        host: config.get<string>('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get<string>('DB_USERNAME', 'raguser'),
-        password: config.get<string>('DB_PASSWORD', 'ragpassword123'),
-        database: config.get<string>('DB_NAME', 'ragdb'),
-        autoLoadEntities: true,
-        synchronize: config.get<string>('NODE_ENV') !== 'production',
-      }),
+      useFactory: (config: ConfigService) => {
+        const syncRaw = config.get<string>('DB_SYNCHRONIZE');
+        const synchronize =
+          typeof syncRaw === 'string'
+            ? ['1', 'true', 'yes', 'on'].includes(syncRaw.toLowerCase())
+            : config.get<string>('NODE_ENV') !== 'production';
+
+        return {
+          type: 'postgres' as const,
+          host: config.get<string>('DB_HOST', 'localhost'),
+          port: config.get<number>('DB_PORT', 5432),
+          username: config.get<string>('DB_USERNAME', 'raguser'),
+          password: config.get<string>('DB_PASSWORD', 'ragpassword123'),
+          database: config.get<string>('DB_NAME', 'ragdb'),
+          autoLoadEntities: true,
+          synchronize,
+        };
+      },
       dataSourceFactory: async (options) => {
         const { DataSource } = await import('typeorm');
         if (!options) throw new Error('Invalid DB options passed');
