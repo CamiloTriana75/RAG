@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
+import { lookup as dnsLookup } from 'node:dns/promises';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { DocumentsModule } from './documents/documents.module';
@@ -31,7 +32,7 @@ function isEnabled(value: string | boolean | undefined): boolean {
     // ── TypeORM + PostgreSQL + pgvector ─────────────
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: async (config: ConfigService) => {
         const syncRaw = config.get<string>('DB_SYNCHRONIZE');
         const synchronize =
           typeof syncRaw === 'string'
@@ -45,10 +46,22 @@ function isEnabled(value: string | boolean | undefined): boolean {
         const rawIpFamily = config.get<string>('DB_IP_FAMILY');
         const parsedFamily = rawIpFamily ? Number(rawIpFamily) : NaN;
         const family = parsedFamily === 4 || parsedFamily === 6 ? parsedFamily : undefined;
+        const configuredHost = config.get<string>('DB_HOST', 'localhost');
+        let dbHost = configuredHost;
+
+        if (family && configuredHost) {
+          try {
+            const resolved = await dnsLookup(configuredHost, { family, all: false });
+            dbHost = resolved.address;
+          } catch {
+            // Fall back to the configured hostname if DNS resolution fails.
+            dbHost = configuredHost;
+          }
+        }
 
         return {
           type: 'postgres' as const,
-          host: config.get<string>('DB_HOST', 'localhost'),
+          host: dbHost,
           port: config.get<number>('DB_PORT', 5432),
           username: config.get<string>('DB_USERNAME', 'raguser'),
           password: config.get<string>('DB_PASSWORD', 'ragpassword123'),
@@ -56,7 +69,6 @@ function isEnabled(value: string | boolean | undefined): boolean {
           autoLoadEntities: true,
           synchronize,
           ssl: sslEnabled ? { rejectUnauthorized: false } : false,
-          ...(family ? { extra: { family } } : {}),
         };
       },
       dataSourceFactory: async (options) => {
