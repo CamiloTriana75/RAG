@@ -55,8 +55,9 @@ function isEnabled(value: string | boolean | undefined): boolean {
             dbHost = resolved.address;
           } catch {
             if (family === 4) {
-              throw new Error(
-                `DB_IP_FAMILY=4 is set but DB_HOST (${configuredHost}) has no IPv4 record. Use Supabase Session Pooler host (aws-0-<region>.pooler.supabase.com).`,
+              console.warn(
+                `⚠️  DB_IP_FAMILY=4 requested but DB_HOST (${configuredHost}) has no IPv4 record. Falling back to hostname. ` +
+                `If you get ENETUNREACH with IPv6, verify the Session Pooler endpoint in Supabase (e.g., aws-0-<region>.pooler.supabase.com).`,
               );
             }
             // Fall back to the configured hostname if DNS resolution fails.
