@@ -11,6 +11,14 @@ import { RagModule } from './rag/rag.module';
 import { HealthModule } from './health/health.module';
 import { AppController } from './app.controller';
 
+function isEnabled(value: string | boolean | undefined): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return ['1', 'true', 'yes', 'on'].includes(value.toLowerCase());
+  }
+  return false;
+}
+
 @Module({
   controllers: [AppController],
   imports: [
@@ -30,11 +38,13 @@ import { AppController } from './app.controller';
             ? ['1', 'true', 'yes', 'on'].includes(syncRaw.toLowerCase())
             : config.get<string>('NODE_ENV') !== 'production';
 
-        const rawSsl = config.get<string>('DB_SSL');
-        const sslEnabled =
-          typeof rawSsl === 'string'
-            ? ['1', 'true', 'yes', 'on'].includes(rawSsl.toLowerCase())
-            : Boolean(rawSsl);
+        const sslEnabled = isEnabled(config.get<string | boolean>('DB_SSL'));
+
+        // Some managed Postgres providers may return IPv6 first.
+        // Render instances can fail with ENETUNREACH on IPv6 in certain setups.
+        const rawIpFamily = config.get<string>('DB_IP_FAMILY');
+        const parsedFamily = rawIpFamily ? Number(rawIpFamily) : NaN;
+        const family = parsedFamily === 4 || parsedFamily === 6 ? parsedFamily : undefined;
 
         return {
           type: 'postgres' as const,
@@ -46,6 +56,7 @@ import { AppController } from './app.controller';
           autoLoadEntities: true,
           synchronize,
           ssl: sslEnabled ? { rejectUnauthorized: false } : false,
+          ...(family ? { extra: { family } } : {}),
         };
       },
       dataSourceFactory: async (options) => {
@@ -68,9 +79,23 @@ import { AppController } from './app.controller';
         const redisUrl = config.get<string>('REDIS_URL');
 
         if (redisUrl) {
-          // Allow passing the full redis URL (e.g. redis://:pwd@host:port or rediss://...)
-          // BullMQ / ioredis expect an options object; pass the URL as `url`.
-          return { connection: { url: redisUrl } as any };
+          // Parse REDIS_URL explicitly to avoid runtime differences where `url`
+          // may be treated as `host` by intermediate wrappers.
+          try {
+            const parsed = new URL(redisUrl);
+            const connection: any = {
+              host: parsed.hostname,
+              port: parsed.port ? Number(parsed.port) : 6379,
+            };
+
+            if (parsed.username) connection.username = parsed.username;
+            if (parsed.password) connection.password = parsed.password;
+            if (parsed.protocol === 'rediss:') connection.tls = {};
+
+            return { connection };
+          } catch {
+            throw new Error('REDIS_URL is invalid. Expected format: redis(s)://user:password@host:port');
+          }
         }
 
         const connection: any = {
@@ -81,13 +106,7 @@ import { AppController } from './app.controller';
         const password = config.get<string>('REDIS_PASSWORD');
         if (password) connection.password = password;
 
-        const rawTls = config.get<string | boolean>('REDIS_TLS');
-        const tlsEnabled =
-          typeof rawTls === 'boolean'
-            ? rawTls
-            : typeof rawTls === 'string'
-            ? ['1', 'true', 'yes', 'on'].includes(rawTls.toLowerCase())
-            : false;
+        const tlsEnabled = isEnabled(config.get<string | boolean>('REDIS_TLS'));
 
         if (tlsEnabled) {
           connection.tls = {};

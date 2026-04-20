@@ -39,6 +39,8 @@ services:
         value: "false"
       - key: DB_SSL
         value: "true"
+      - key: DB_IP_FAMILY
+        value: "4"
 
       # Redis for BullMQ (recommended: full connection URL)
       - key: REDIS_URL
