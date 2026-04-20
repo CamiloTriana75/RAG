@@ -33,14 +33,19 @@ Notas importantes del blueprint actual:
 Variables minimas:
 
 - `NODE_ENV=production`
-- `DB_HOST` (host de Supabase)
-- `DB_PORT=5432`
-- `DB_USERNAME`
+- `DB_HOST` (usa Session Pooler de Supabase, no el host directo `db.<project-ref>.supabase.co`)
+- `DB_PORT=5432` (Session Pooler)
+- `DB_USERNAME` (formato pooler: `postgres.<project-ref>`)
 - `DB_PASSWORD`
 - `DB_NAME`
 - `DB_SSL=true`
 - `REDIS_URL` (ejemplo: `rediss://:<password>@<host>:<port>`)
 - `JWT_SECRET` (si no existe, Render lo genera por `generateValue: true`)
+
+Nota de troubleshooting:
+
+- Si ves `ENETUNREACH` con una direccion `2600:...` en logs de Render, estas usando un host IPv6-only.
+- Cambia a Session Pooler (`aws-0-<region>.pooler.supabase.com`) y usa `DB_USERNAME=postgres.<project-ref>`.
 
 Variables opcionales/recomendadas:
 

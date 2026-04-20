@@ -54,6 +54,11 @@ function isEnabled(value: string | boolean | undefined): boolean {
             const resolved = await dnsLookup(configuredHost, { family, all: false });
             dbHost = resolved.address;
           } catch {
+            if (family === 4) {
+              throw new Error(
+                `DB_IP_FAMILY=4 is set but DB_HOST (${configuredHost}) has no IPv4 record. Use Supabase Session Pooler host (aws-0-<region>.pooler.supabase.com).`,
+              );
+            }
             // Fall back to the configured hostname if DNS resolution fails.
             dbHost = configuredHost;
           }
