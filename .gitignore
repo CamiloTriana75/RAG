@@ -1,7 +1,14 @@
 # compiled output
 /dist
-/node_modules
 /build
+
+# monorepo dependencies and artifacts
+**/node_modules/
+**/dist/
+**/.next/
+**/build/
+**/coverage/
+**/*.tsbuildinfo
 
 # logs
 logs
@@ -10,7 +17,10 @@ npm-debug.log*
 
 # environment
 .env
+.env.deploy
 /uploads
+.env.local
+.env.*.local
 
 # OS
 .DS_Store
@@ -25,6 +35,8 @@ Thumbs.db
 # uploads
 uploads/*
 !uploads/.gitkeep
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # coverage
 coverage

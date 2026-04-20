@@ -1,0 +1,65 @@
+# Render blueprint for backend-only deploy in this monorepo.
+# Frontend can remain deployed separately (for example in Vercel).
+services:
+  - type: web
+    name: rag-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: starter
+    region: oregon
+    autoDeployTrigger: commit
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - backend/**
+        - render.yaml
+    # Optional but recommended with current upload flow.
+    # Current code stores incoming files in ./uploads before ingestion.
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 10
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # PostgreSQL (Supabase / managed provider)
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: DB_SYNCHRONIZE
+        value: "false"
+      - key: DB_SSL
+        value: "true"
+
+      # Redis for BullMQ (recommended: full connection URL)
+      - key: REDIS_URL
+        sync: false
+
+      # App and auth
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION
+        value: "1h"
+      - key: CHUNK_SIZE
+        value: "1000"
+      - key: CHUNK_OVERLAP
+        value: "200"
+
+      # LLM provider (optional for indexing, required for chat answers)
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_MODELS
+        value: "meta-llama/llama-3.2-3b-instruct:free,meta-llama/llama-3.3-70b-instruct:free,qwen/qwen3-coder:free"
+      - key: OPENROUTER_REFERER
+        value: "https://example.com"
+      - key: OPENROUTER_TITLE
+        value: "RAG Backend"

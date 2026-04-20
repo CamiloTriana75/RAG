@@ -102,7 +102,7 @@ function normalizeDocumentStatus(status: unknown): Document["status"] {
 }
 
 function normalizeDocument(raw: Document | Record<string, unknown>): Document {
-  const source = raw as Record<string, unknown>;
+  const source = raw as unknown as Record<string, unknown>;
   const rawChunks = source.chunksCount ?? source.totalChunks;
   const parsedChunks = Number(rawChunks);
   const fallbackTimestamp = new Date().toISOString();

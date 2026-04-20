@@ -103,17 +103,39 @@ npm run test:all
 - API Swagger: http://localhost:3001/api/docs
 - Frontend: http://localhost:3000 (o el puerto que asigne Next)
 
-## Despliegue Completo (Frontend + Backend + BD)
+## Despliegue Recomendado
 
-El repositorio incluye un stack de despliegue en `docker-compose.deploy.yml` con:
+Para este proyecto, la combinacion mas simple y estable es:
 
-- Frontend Next.js
-- Backend NestJS
-- PostgreSQL (pgvector)
-- Redis
-- pgAdmin para visualizar BD
+- Frontend en Vercel
+- Backend en Render
+- PostgreSQL con `pgvector` en un servicio gestionado
+- Redis gestionado para BullMQ
 
-### 1) Preparar variables de despliegue
+La razon es practica: el frontend Next.js encaja muy bien en Vercel, pero el backend NestJS de este repo no es solo una API. Tambien procesa cargas de archivos, mantiene colas con BullMQ y ejecuta un worker de ingestion, asi que en Vercel tendrias que reestructurar bastante la arquitectura.
+
+### Frontend En Vercel
+
+1. Conecta la carpeta `frontend/` como proyecto independiente en Vercel.
+2. Configura la variable de entorno `NEXT_PUBLIC_API_URL` con la URL publica del backend.
+3. Mantén `NEXT_PUBLIC_DEMO_MODE=false` salvo que quieras habilitar el modo demo.
+4. Usa el build estandar de Next.js; no hace falta configuracion especial.
+
+### Backend En Render
+
+1. Crea un Web Service apuntando a `backend/`.
+2. Usa el comando de inicio por defecto del proyecto: `npm run start:prod`.
+3. Configura `PORT` con el valor que Render exponga automaticamente.
+4. Carga las variables del backend: `DB_*`, `REDIS_*`, `JWT_SECRET`, `OPENROUTER_API_KEY`, `OPENROUTER_MODELS`, `OPENROUTER_REFERER` y `OPENROUTER_TITLE`.
+5. Conserva `backend/uploads` con un disco persistente o migra los archivos a almacenamiento externo, porque la ingesta lee el archivo desde disco antes de procesarlo.
+
+### Base De Datos Y Redis
+
+1. Usa una instancia de PostgreSQL con la extension `pgvector` habilitada.
+2. Usa Redis gestionado para BullMQ; no dependas de Redis local en produccion.
+3. Ejecuta `backend/scripts/init-db.sql` una sola vez despues de crear la base.
+
+### Variables De Entorno Para Produccion
 
 ```bash
 cp .env.deploy.example .env.deploy
@@ -121,18 +143,21 @@ cp .env.deploy.example .env.deploy
 
 Edita `.env.deploy` y ajusta especialmente:
 
+- `NEXT_PUBLIC_API_URL` con la URL publica del backend
 - `OPENROUTER_API_KEY`
 - `JWT_SECRET`
-- `NEXT_PUBLIC_API_URL` (URL publica del backend)
-- Passwords de base de datos y pgAdmin
+- Credenciales de PostgreSQL y Redis
+- Credenciales de pgAdmin solo si mantienes ese panel
 
-### 2) Levantar todo el stack
+### Si Quieres Seguir Con Docker
+
+El repositorio tambien conserva un stack completo en `docker-compose.deploy.yml` para un despliegue autogestionado con frontend, backend, PostgreSQL, Redis y pgAdmin.
 
 ```bash
 docker compose -f docker-compose.deploy.yml --env-file .env.deploy up -d --build
 ```
 
-Tambien tienes scripts de atajo desde raiz:
+Desde raiz tambien tienes los atajos:
 
 ```bash
 npm run deploy:up
@@ -140,21 +165,13 @@ npm run deploy:logs
 npm run deploy:down
 ```
 
-### 3) Inicializar pgvector e indices
-
-En Linux/macOS (bash):
+Para inicializar `pgvector` e indices en ese stack:
 
 ```bash
-docker compose -f docker-compose.deploy.yml --env-file .env.deploy exec -T postgres psql -U raguser -d ragdb < backend/scripts/init-db.sql
-```
-
-En Windows PowerShell:
-
-```powershell
 Get-Content backend/scripts/init-db.sql | docker compose -f docker-compose.deploy.yml --env-file .env.deploy exec -T postgres psql -U raguser -d ragdb
 ```
 
-### 4) Accesos
+Accesos locales del stack Docker:
 
 - Frontend: http://localhost:3100
 - API: http://localhost:3101
