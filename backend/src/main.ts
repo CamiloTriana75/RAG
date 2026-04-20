@@ -16,7 +16,16 @@ async function bootstrap() {
   );
 
   // ── CORS ────────────────────────────────────────────
-  app.enableCors();
+  app.enableCors({
+  origin: [
+    'https://rag-azure-alpha.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+});
 
   // ── Swagger Documentation ───────────────────────────
   const config = new DocumentBuilder()
