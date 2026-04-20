@@ -39,7 +39,9 @@ export class SupabaseStorageService {
 
     const ext = path.extname(file.originalname);
     const timestamp = Date.now();
-    const fileName = `${userId}/${timestamp}-${file.originalname}`;
+    const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const fileName = `${userId}/${timestamp}-${sanitizedName}`;
+    this.logger.log(`Attempting upload to bucket: ${this.bucketName}, file: ${fileName}, bufferSize: ${file.buffer?.length}`);
 
     const { data, error } = await this.client.storage
       .from(this.bucketName)
