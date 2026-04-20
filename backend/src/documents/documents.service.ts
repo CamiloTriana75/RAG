@@ -50,14 +50,19 @@ export class DocumentsService {
     file: Express.Multer.File,
     userId: string,
   ): Promise<Document> {
+    this.logger.log(`📥 Upload request - file: ${file.originalname}, size: ${file.size}, hasBuffer: ${!!file.buffer}`);
+
     let filePath: string;
     let fileUrl: string | undefined;
 
     if (this.supabase.isConfigured()) {
+      this.logger.log(`☁️ Uploading to Supabase...`);
       const uploadResult = await this.supabase.uploadFile(file, userId);
       filePath = uploadResult.filePath;
       fileUrl = uploadResult.url;
+      this.logger.log(`✅ Uploaded to Supabase: ${filePath}`);
     } else {
+      this.logger.warn(`💾 Supabase not configured, using local storage: ${file.path}`);
       filePath = file.path;
     }
 

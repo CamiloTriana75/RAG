@@ -17,6 +17,7 @@ export class SupabaseStorageService {
     if (supabaseUrl && supabaseKey) {
       this.client = createClient(supabaseUrl, supabaseKey);
       this.logger.log(`📦 Conectado a Supabase Storage: ${supabaseUrl}`);
+      this.logger.log(`🪣 Bucket: ${this.bucketName}`);
     } else {
       this.logger.warn(
         '⚠️ SUPABASE_URL o SUPABASE_SERVICE_KEY no configurados. Usando almacenamiento local.',
@@ -37,7 +38,8 @@ export class SupabaseStorageService {
     }
 
     const ext = path.extname(file.originalname);
-    const fileName = `${userId}/${file.fieldname}${ext}`;
+    const timestamp = Date.now();
+    const fileName = `${userId}/${timestamp}-${file.originalname}`;
 
     const { data, error } = await this.client.storage
       .from(this.bucketName)
