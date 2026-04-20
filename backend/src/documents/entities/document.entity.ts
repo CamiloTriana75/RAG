@@ -32,6 +32,9 @@ export class Document {
   @Column({ name: 'file_path' })
   filePath: string;
 
+  @Column({ name: 'file_url', nullable: true })
+  fileUrl: string;
+
   @Column({ type: 'bigint', default: 0 })
   size: number;
 

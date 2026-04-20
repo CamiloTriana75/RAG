@@ -65,3 +65,11 @@ services:
         value: "https://example.com"
       - key: OPENROUTER_TITLE
         value: "RAG Backend"
+
+      # Supabase Storage (optional - for document storage)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET_NAME
+        value: "documents"

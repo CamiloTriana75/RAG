@@ -10,6 +10,7 @@ import { IngestionModule } from './ingestion/ingestion.module';
 import { AiModule } from './ai/ai.module';
 import { RagModule } from './rag/rag.module';
 import { HealthModule } from './health/health.module';
+import { SupabaseModule } from './common/supabase.module';
 import { AppController } from './app.controller';
 
 function isEnabled(value: string | boolean | undefined): boolean {
@@ -142,6 +143,7 @@ function isEnabled(value: string | boolean | undefined): boolean {
     AiModule,
     RagModule,
     HealthModule,
+    SupabaseModule,
   ],
 })
 export class AppModule {}

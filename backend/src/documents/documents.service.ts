@@ -9,6 +9,7 @@ import { DataSource, Repository } from 'typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Document, DocumentStatus } from './entities/document.entity';
+import { SupabaseStorageService } from '../common/supabase.service';
 
 export interface ExtractedInfoResponse {
   documentId: string;
@@ -42,17 +43,29 @@ export class DocumentsService {
     @InjectQueue('document-ingestion')
     private readonly ingestionQueue: Queue,
     private readonly dataSource: DataSource,
+    private readonly supabase: SupabaseStorageService,
   ) {}
 
   async upload(
     file: Express.Multer.File,
     userId: string,
   ): Promise<Document> {
-    // Create document record
+    let filePath: string;
+    let fileUrl: string | undefined;
+
+    if (this.supabase.isConfigured()) {
+      const uploadResult = await this.supabase.uploadFile(file, userId);
+      filePath = uploadResult.filePath;
+      fileUrl = uploadResult.url;
+    } else {
+      filePath = file.path;
+    }
+
     const document = this.documentsRepo.create({
       originalName: file.originalname,
       mimeType: file.mimetype,
-      filePath: file.path,
+      filePath,
+      fileUrl,
       size: file.size,
       status: DocumentStatus.PENDING,
       userId,
@@ -61,7 +74,6 @@ export class DocumentsService {
     const saved = await this.documentsRepo.save(document);
     this.logger.log(`📄 Document uploaded: ${saved.originalName} (${saved.id})`);
 
-    // Enqueue ingestion job
     await this.ingestionQueue.add(
       'process-document',
       {
@@ -69,6 +81,7 @@ export class DocumentsService {
         filePath: saved.filePath,
         mimeType: saved.mimeType,
         originalName: saved.originalName,
+        isSupabase: this.supabase.isConfigured(),
       },
       {
         attempts: 3,
@@ -124,7 +137,14 @@ export class DocumentsService {
       throw new ForbiddenException('No tienes permiso para eliminar este documento');
     }
 
-    // Delete will cascade to chunks due to DB relation
+    if (this.supabase.isConfigured() && document.filePath) {
+      try {
+        await this.supabase.deleteFile(document.filePath);
+      } catch (error) {
+        this.logger.warn(`Could not delete file from Supabase: ${error}`);
+      }
+    }
+
     await this.documentsRepo.remove(document);
     this.logger.log(`🗑️ Document deleted: ${document.originalName} (${id})`);
   }

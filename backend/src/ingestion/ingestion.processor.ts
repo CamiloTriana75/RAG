@@ -3,16 +3,20 @@ import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { Job } from 'bullmq';
+import * as fs from 'fs';
+import * as path from 'path';
 import { DocumentChunk } from './entities/document-chunk.entity';
 import { Document, DocumentStatus } from '../documents/entities/document.entity';
 import { IngestionService } from './ingestion.service';
 import { AiService } from '../ai/ai.service';
+import { SupabaseStorageService } from '../common/supabase.service';
 
 interface IngestionJobData {
   documentId: string;
   filePath: string;
   mimeType: string;
   originalName: string;
+  isSupabase?: boolean;
 }
 
 @Processor('document-ingestion', {
@@ -29,23 +33,32 @@ export class IngestionProcessor extends WorkerHost {
     private readonly documentsRepo: Repository<Document>,
     @InjectRepository(DocumentChunk)
     private readonly chunksRepo: Repository<DocumentChunk>,
+    private readonly supabase: SupabaseStorageService,
   ) {
     super();
   }
 
   async process(job: Job<IngestionJobData>): Promise<void> {
-    const { documentId, filePath, mimeType, originalName } = job.data;
+    const { documentId, filePath, mimeType, originalName, isSupabase } = job.data;
     this.logger.log(`🔄 Processing document: ${originalName} (${documentId})`);
 
+    let tempFilePath = filePath;
+
     try {
-      // ── 1. Mark as PROCESSING ──────────────────────
       await this.documentsRepo.update(documentId, {
         status: DocumentStatus.PROCESSING,
       });
 
-      // ── 2. Extract text ────────────────────────────
       await job.updateProgress(10);
-      const text = await this.ingestionService.extractText(filePath, mimeType);
+
+      if (isSupabase) {
+        const buffer = await this.supabase.downloadFile(filePath);
+        const ext = path.extname(filePath);
+        tempFilePath = path.join('uploads', `${documentId}${ext}`);
+        fs.writeFileSync(tempFilePath, buffer);
+      }
+
+      const text = await this.ingestionService.extractText(tempFilePath, mimeType);
 
       if (!text || text.trim().length === 0) {
         throw new Error('No se pudo extraer texto del documento');
@@ -100,7 +113,11 @@ export class IngestionProcessor extends WorkerHost {
         errorMessage: error.message,
       });
 
-      throw error; // Re-throw for BullMQ retry logic
+      throw error;
+    } finally {
+      if (isSupabase && tempFilePath && fs.existsSync(tempFilePath)) {
+        fs.unlinkSync(tempFilePath);
+      }
     }
   }
 
