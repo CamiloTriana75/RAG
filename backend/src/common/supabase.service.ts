@@ -51,22 +51,26 @@ export class SupabaseStorageService {
       throw new Error('Supabase no está configurado');
     }
 
-    const ext = path.extname(file.originalname);
     const timestamp = Date.now();
     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const fileName = `${userId}/${timestamp}-${sanitizedName}`;
-    this.logger.log(`Attempting upload to bucket: ${this.bucketName}, file: ${fileName}, bufferSize: ${file.buffer?.length}`);
+    const fileName = `${timestamp}-${sanitizedName}`;
+    this.logger.log(`Uploading to bucket: '${this.bucketName}', path: '${fileName}', size: ${file.buffer?.length}`);
 
-    const { data, error } = await this.client.storage
-      .from(this.bucketName)
-      .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
-      });
+    try {
+      const { data, error } = await this.client.storage
+        .from(this.bucketName)
+        .upload(fileName, file.buffer, {
+          contentType: file.mimetype,
+          upsert: false,
+        });
 
-    if (error) {
-      this.logger.error(`Error subiendo a Supabase: ${error.message}`);
-      throw new Error(`Error al subir archivo: ${error.message}`);
+      if (error) {
+        this.logger.error(`Supabase upload error: ${JSON.stringify(error)}`);
+        throw new Error(`Error al subir archivo: ${error.message}`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Upload exception: ${err.message}`);
+      throw err;
     }
 
     const { data: urlData } = this.client.storage
