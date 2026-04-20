@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { extname } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -61,14 +61,8 @@ export class DocumentsController {
   @ApiResponse({ status: 400, description: 'Tipo de archivo no soportado' })
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads',
-        filename: (_req, file, callback) => {
-          const uniqueName = `${uuidv4()}${extname(file.originalname)}`;
-          callback(null, uniqueName);
-        },
-      }),
-      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+      storage: memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024 },
       fileFilter: (_req, file, callback) => {
         if (ALLOWED_MIMETYPES.includes(file.mimetype)) {
           callback(null, true);
