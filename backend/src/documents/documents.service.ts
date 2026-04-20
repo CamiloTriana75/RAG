@@ -57,6 +57,9 @@ export class DocumentsService {
 
     if (this.supabase.isConfigured()) {
       this.logger.log(`☁️ Uploading to Supabase...`);
+      const availableBuckets = await this.supabase.listBuckets();
+      this.logger.log(`🪣 Available buckets: ${availableBuckets.join(', ')}`);
+      this.logger.log(`🎯 Using bucket: ${this.supabase.getBucketName()}`);
       const uploadResult = await this.supabase.uploadFile(file, userId);
       filePath = uploadResult.filePath;
       fileUrl = uploadResult.url;

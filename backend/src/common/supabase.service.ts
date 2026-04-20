@@ -25,8 +25,22 @@ export class SupabaseStorageService {
     }
   }
 
+  async listBuckets(): Promise<string[]> {
+    if (!this.client) return [];
+    const { data, error } = await this.client.storage.listBuckets();
+    if (error) {
+      this.logger.error(`Error listing buckets: ${error.message}`);
+      return [];
+    }
+    return data.map(b => b.id);
+  }
+
   isConfigured(): boolean {
     return this.client !== null;
+  }
+
+  getBucketName(): string {
+    return this.bucketName;
   }
 
   async uploadFile(
