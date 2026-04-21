@@ -194,6 +194,61 @@ export class IngestionService {
       .trim();
   }
 
+  private async loadExcelJsModule(): Promise<{
+    stream?: { xlsx?: { WorkbookReader?: new (...args: unknown[]) => AsyncIterable<unknown> } };
+    Workbook?: new () => { xlsx: { readFile(filePath: string): Promise<void> }; worksheets: Array<{ name?: string; eachRow(cb: (row: { values: unknown[] }) => void): void }> };
+  }> {
+    const excelJsModule = (await import('exceljs')) as Record<string, unknown>;
+    const excelJs = (excelJsModule.default ?? excelJsModule) as {
+      stream?: { xlsx?: { WorkbookReader?: new (...args: unknown[]) => AsyncIterable<unknown> } };
+      Workbook?: new () => {
+        xlsx: { readFile(filePath: string): Promise<void> };
+        worksheets: Array<{
+          name?: string;
+          eachRow(cb: (row: { values: unknown[] }) => void): void;
+        }>;
+      };
+    };
+
+    if (!excelJs || (typeof excelJs !== 'object' && typeof excelJs !== 'function')) {
+      throw new Error('exceljs module failed to load');
+    }
+
+    return excelJs;
+  }
+
+  private async loadXlsxModule(): Promise<{
+    readFile(filePath: string): {
+      SheetNames: string[];
+      Sheets: Record<string, unknown>;
+    };
+    utils: {
+      sheet_to_csv(sheet: unknown): string;
+    };
+  }> {
+    const xlsxModule = (await import('xlsx')) as Record<string, unknown>;
+    const xlsx = (xlsxModule.default ?? xlsxModule) as {
+      readFile?: (filePath: string) => {
+        SheetNames: string[];
+        Sheets: Record<string, unknown>;
+      };
+      utils?: {
+        sheet_to_csv?: (sheet: unknown) => string;
+      };
+    };
+
+    if (!xlsx?.readFile || !xlsx?.utils?.sheet_to_csv) {
+      throw new Error('XLSX module failed to load or parse methods are unavailable');
+    }
+
+    return {
+      readFile: xlsx.readFile,
+      utils: {
+        sheet_to_csv: xlsx.utils.sheet_to_csv,
+      },
+    };
+  }
+
   private async extractFromSpreadsheet(
     filePath: string,
     preferredSheet?: string,
@@ -203,8 +258,93 @@ export class IngestionService {
       return this.extractFromLegacySpreadsheet(filePath, preferredSheet);
     }
 
-    const ExcelJS = await import('exceljs');
-    const workbookReader = new ExcelJS.stream.xlsx.WorkbookReader(filePath, {
+    const ExcelJS = await this.loadExcelJsModule();
+    const WorkbookReader = ExcelJS.stream?.xlsx?.WorkbookReader;
+
+    if (!WorkbookReader) {
+      this.logger.warn(
+        'exceljs stream reader unavailable; falling back to non-stream workbook loading',
+      );
+
+      const Workbook = ExcelJS.Workbook;
+      if (!Workbook) {
+        throw new Error('exceljs Workbook constructor is unavailable');
+      }
+
+      const workbook = new Workbook();
+      await workbook.xlsx.readFile(filePath);
+
+      const normalizedSelector = preferredSheet?.trim();
+      const targetIndex =
+        normalizedSelector && /^\d+$/.test(normalizedSelector)
+          ? Number(normalizedSelector)
+          : undefined;
+      const targetName =
+        normalizedSelector && !/^\d+$/.test(normalizedSelector)
+          ? normalizedSelector.toLowerCase()
+          : undefined;
+      const processAll = this.processAllSheetsByDefault && !normalizedSelector;
+
+      const blocks: string[] = [];
+      let sheetOrdinal = 0;
+      let matchedRequestedSheet = false;
+
+      for (const sheet of workbook.worksheets) {
+        sheetOrdinal += 1;
+        const sheetName = sheet.name ?? `Sheet${sheetOrdinal}`;
+        const matchesByName = targetName
+          ? sheetName.toLowerCase() === targetName
+          : false;
+        const matchesByIndex = targetIndex ? sheetOrdinal === targetIndex : false;
+
+        const shouldProcessSheet = processAll
+          ? true
+          : normalizedSelector
+            ? matchesByName || matchesByIndex
+            : sheetOrdinal === 1;
+
+        if (!shouldProcessSheet) {
+          continue;
+        }
+
+        if (normalizedSelector) {
+          matchedRequestedSheet = true;
+        }
+
+        const rows: string[] = [];
+        sheet.eachRow((row) => {
+          const csvRow = this.rowValuesToCsv(row.values);
+          if (csvRow.length > 0) {
+            rows.push(csvRow);
+          }
+        });
+
+        if (rows.length > 0) {
+          blocks.push(`--- Hoja: ${sheetName} ---`);
+          blocks.push(rows.join('\n'));
+          blocks.push('');
+        }
+
+        if (!processAll) {
+          break;
+        }
+      }
+
+      if (normalizedSelector && !matchedRequestedSheet) {
+        throw new Error(
+          `No se encontro la hoja solicitada: ${normalizedSelector}`,
+        );
+      }
+
+      const extractedText = blocks.join('\n').trim();
+      if (!extractedText) {
+        throw new Error('El archivo Excel no contiene filas legibles');
+      }
+
+      return extractedText;
+    }
+
+    const workbookReader = new WorkbookReader(filePath, {
       entries: 'emit',
       sharedStrings: 'cache',
       hyperlinks: 'ignore',
@@ -296,11 +436,7 @@ export class IngestionService {
     preferredSheet?: string,
   ): Promise<string> {
     try {
-      // Use dynamic import to avoid CommonJS require issues in ES modules
-      const XLSX = (await import('xlsx')).default;
-      if (!XLSX || !XLSX.readFile) {
-        throw new Error('XLSX module failed to load or parse method unavailable');
-      }
+      const XLSX = await this.loadXlsxModule();
 
       const workbook = XLSX.readFile(filePath);
       let extractedText = '';
