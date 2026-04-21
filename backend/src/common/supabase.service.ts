@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import * as path from 'path';
+import * as fs from 'fs';
 
 @Injectable()
 export class SupabaseStorageService {
@@ -54,12 +55,22 @@ export class SupabaseStorageService {
     const timestamp = Date.now();
     const sanitizedName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
     const fileName = `${timestamp}-${sanitizedName}`;
-    this.logger.log(`Uploading to bucket: '${this.bucketName}', path: '${fileName}', size: ${file.buffer?.length}`);
+    const payload =
+      file.buffer ??
+      (file.path ? await fs.promises.readFile(path.resolve(file.path)) : undefined);
+
+    if (!payload) {
+      throw new Error('No se pudo obtener el contenido del archivo para subirlo a Supabase');
+    }
+
+    this.logger.log(
+      `Uploading to bucket: '${this.bucketName}', path: '${fileName}', size: ${payload.length}`,
+    );
 
     try {
       const { data, error } = await this.client.storage
         .from(this.bucketName)
-        .upload(fileName, file.buffer, {
+        .upload(fileName, payload, {
           contentType: file.mimetype,
           upsert: false,
         });

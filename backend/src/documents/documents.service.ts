@@ -33,6 +33,10 @@ export interface ExtractedInfoResponse {
   }>;
 }
 
+interface UploadOptions {
+  preferredSheet?: string;
+}
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
@@ -49,8 +53,18 @@ export class DocumentsService {
   async upload(
     file: Express.Multer.File,
     userId: string,
+    options: UploadOptions = {},
   ): Promise<Document> {
-    this.logger.log(`📥 Upload request - file: ${file.originalname}, size: ${file.size}, hasBuffer: ${!!file.buffer}`);
+    const fileSizeMb = (file.size / (1024 * 1024)).toFixed(2);
+    this.logger.log(
+      `📥 Upload request - file: ${file.originalname}, sizeMB: ${fileSizeMb}, hasBuffer: ${!!file.buffer}`,
+    );
+
+    if (file.size >= 25 * 1024 * 1024) {
+      this.logger.warn(
+        `⚠️ Large file uploaded (${fileSizeMb} MB): ${file.originalname}. Consider splitting oversized files when possible.`,
+      );
+    }
 
     let filePath: string;
     let fileUrl: string | undefined;
@@ -89,6 +103,8 @@ export class DocumentsService {
         filePath: saved.filePath,
         mimeType: saved.mimeType,
         originalName: saved.originalName,
+        fileSize: saved.size,
+        preferredSheet: options.preferredSheet,
         isSupabase: this.supabase.isConfigured(),
       },
       {

@@ -53,6 +53,14 @@ Variables opcionales/recomendadas:
 - `OPENROUTER_MODELS`
 - `OPENROUTER_REFERER`
 - `OPENROUTER_TITLE`
+- `INGESTION_JOB_TIMEOUT_MS=600000` (10 minutos por job)
+- `INGESTION_INSERT_BATCH_SIZE=100` (insercion por lotes de chunks)
+- `EXCEL_PROCESS_ALL_SHEETS=false` (por defecto procesa solo la primera hoja)
+
+Nota sobre Excel:
+
+- El endpoint `POST /documents/upload` acepta un campo opcional `sheet`.
+- `sheet` puede ser nombre de hoja (ej. `Resumen`) o indice (ej. `2` para segunda hoja).
 
 4) Orden correcto para inicializar BD
 -------------------------------------
