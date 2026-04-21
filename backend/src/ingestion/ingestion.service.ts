@@ -255,9 +255,24 @@ export class IngestionService {
   ): Promise<string> {
     const extension = path.extname(filePath).toLowerCase();
     if (extension === '.xls') {
-      return this.extractFromLegacySpreadsheet(filePath, preferredSheet);
+      return this.extractWithXlsxLibrary(filePath, preferredSheet);
     }
 
+    try {
+      return await this.extractFromXlsxWithExcelJs(filePath, preferredSheet);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `exceljs parsing failed for ${filePath}. Falling back to xlsx library. Reason: ${errorMsg}`,
+      );
+      return this.extractWithXlsxLibrary(filePath, preferredSheet);
+    }
+  }
+
+  private async extractFromXlsxWithExcelJs(
+    filePath: string,
+    preferredSheet?: string,
+  ): Promise<string> {
     const ExcelJS = await this.loadExcelJsModule();
     const WorkbookReader = ExcelJS.stream?.xlsx?.WorkbookReader;
 
@@ -272,7 +287,11 @@ export class IngestionService {
       }
 
       const workbook = new Workbook();
-      await workbook.xlsx.readFile(filePath);
+      const readFileMethod = workbook?.xlsx?.readFile;
+      if (typeof readFileMethod !== 'function') {
+        throw new Error('exceljs workbook.readFile is unavailable');
+      }
+      await readFileMethod.call(workbook.xlsx, filePath);
 
       const normalizedSelector = preferredSheet?.trim();
       const targetIndex =
@@ -431,51 +450,61 @@ export class IngestionService {
     return extractedText;
   }
 
+  private async extractWithXlsxLibrary(
+    filePath: string,
+    preferredSheet?: string,
+  ): Promise<string> {
+    const XLSX = await this.loadXlsxModule();
+    const workbook = XLSX.readFile(filePath);
+    let extractedText = '';
+    const normalizedSelector = preferredSheet?.trim();
+    const targetIndex =
+      normalizedSelector && /^\d+$/.test(normalizedSelector)
+        ? Number(normalizedSelector)
+        : undefined;
+    const targetName =
+      normalizedSelector && !/^\d+$/.test(normalizedSelector)
+        ? normalizedSelector.toLowerCase()
+        : undefined;
+
+    const selectedSheetNames = this.processAllSheetsByDefault && !normalizedSelector
+      ? workbook.SheetNames
+      : workbook.SheetNames.filter((sheetName: string, index: number) => {
+          if (!normalizedSelector) {
+            return index === 0;
+          }
+          if (targetIndex) {
+            return index + 1 === targetIndex;
+          }
+          return sheetName.toLowerCase() === targetName;
+        });
+
+    if (normalizedSelector && selectedSheetNames.length === 0) {
+      throw new Error(`No se encontro la hoja solicitada: ${normalizedSelector}`);
+    }
+
+    for (const sheetName of selectedSheetNames) {
+      const sheet = workbook.Sheets[sheetName];
+      const csvData = XLSX.utils.sheet_to_csv(sheet);
+      if (csvData.trim().length > 0) {
+        extractedText += `--- Hoja: ${sheetName} ---\n${csvData}\n\n`;
+      }
+    }
+
+    const normalized = extractedText.trim();
+    if (!normalized) {
+      throw new Error('El archivo Excel no contiene filas legibles');
+    }
+
+    return normalized;
+  }
+
   private async extractFromLegacySpreadsheet(
     filePath: string,
     preferredSheet?: string,
   ): Promise<string> {
     try {
-      const XLSX = await this.loadXlsxModule();
-
-      const workbook = XLSX.readFile(filePath);
-      let extractedText = '';
-      const normalizedSelector = preferredSheet?.trim();
-      const targetIndex =
-        normalizedSelector && /^\d+$/.test(normalizedSelector)
-          ? Number(normalizedSelector)
-          : undefined;
-      const targetName =
-        normalizedSelector && !/^\d+$/.test(normalizedSelector)
-          ? normalizedSelector.toLowerCase()
-          : undefined;
-
-      const selectedSheetNames = this.processAllSheetsByDefault && !normalizedSelector
-        ? workbook.SheetNames
-        : workbook.SheetNames.filter((sheetName: string, index: number) => {
-            if (!normalizedSelector) {
-              return index === 0;
-            }
-            if (targetIndex) {
-              return index + 1 === targetIndex;
-            }
-            return sheetName.toLowerCase() === targetName;
-          });
-
-      if (normalizedSelector && selectedSheetNames.length === 0) {
-        throw new Error(`No se encontro la hoja solicitada: ${normalizedSelector}`);
-      }
-
-      for (const sheetName of selectedSheetNames) {
-        const sheet = workbook.Sheets[sheetName];
-        const csvData = XLSX.utils.sheet_to_csv(sheet);
-        // Evitamos añadir texto en blanco si la hoja está vacía
-        if (csvData.trim().length > 0) {
-          extractedText += `--- Hoja: ${sheetName} ---\n${csvData}\n\n`;
-        }
-      }
-
-      return extractedText.trim();
+      return this.extractWithXlsxLibrary(filePath, preferredSheet);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.error(`Error extracting legacy spreadsheet from ${filePath}: ${errorMsg}`);
