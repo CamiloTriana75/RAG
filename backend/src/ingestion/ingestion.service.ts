@@ -295,44 +295,55 @@ export class IngestionService {
     filePath: string,
     preferredSheet?: string,
   ): Promise<string> {
-    const XLSX = require('xlsx');
-    const workbook = XLSX.readFile(filePath);
-    let extractedText = '';
-    const normalizedSelector = preferredSheet?.trim();
-    const targetIndex =
-      normalizedSelector && /^\d+$/.test(normalizedSelector)
-        ? Number(normalizedSelector)
-        : undefined;
-    const targetName =
-      normalizedSelector && !/^\d+$/.test(normalizedSelector)
-        ? normalizedSelector.toLowerCase()
-        : undefined;
-
-    const selectedSheetNames = this.processAllSheetsByDefault && !normalizedSelector
-      ? workbook.SheetNames
-      : workbook.SheetNames.filter((sheetName: string, index: number) => {
-          if (!normalizedSelector) {
-            return index === 0;
-          }
-          if (targetIndex) {
-            return index + 1 === targetIndex;
-          }
-          return sheetName.toLowerCase() === targetName;
-        });
-
-    if (normalizedSelector && selectedSheetNames.length === 0) {
-      throw new Error(`No se encontro la hoja solicitada: ${normalizedSelector}`);
-    }
-
-    for (const sheetName of selectedSheetNames) {
-      const sheet = workbook.Sheets[sheetName];
-      const csvData = XLSX.utils.sheet_to_csv(sheet);
-      // Evitamos añadir texto en blanco si la hoja está vacía
-      if (csvData.trim().length > 0) {
-        extractedText += `--- Hoja: ${sheetName} ---\n${csvData}\n\n`;
+    try {
+      // Use dynamic import to avoid CommonJS require issues in ES modules
+      const XLSX = (await import('xlsx')).default;
+      if (!XLSX || !XLSX.readFile) {
+        throw new Error('XLSX module failed to load or parse method unavailable');
       }
-    }
 
-    return extractedText.trim();
+      const workbook = XLSX.readFile(filePath);
+      let extractedText = '';
+      const normalizedSelector = preferredSheet?.trim();
+      const targetIndex =
+        normalizedSelector && /^\d+$/.test(normalizedSelector)
+          ? Number(normalizedSelector)
+          : undefined;
+      const targetName =
+        normalizedSelector && !/^\d+$/.test(normalizedSelector)
+          ? normalizedSelector.toLowerCase()
+          : undefined;
+
+      const selectedSheetNames = this.processAllSheetsByDefault && !normalizedSelector
+        ? workbook.SheetNames
+        : workbook.SheetNames.filter((sheetName: string, index: number) => {
+            if (!normalizedSelector) {
+              return index === 0;
+            }
+            if (targetIndex) {
+              return index + 1 === targetIndex;
+            }
+            return sheetName.toLowerCase() === targetName;
+          });
+
+      if (normalizedSelector && selectedSheetNames.length === 0) {
+        throw new Error(`No se encontro la hoja solicitada: ${normalizedSelector}`);
+      }
+
+      for (const sheetName of selectedSheetNames) {
+        const sheet = workbook.Sheets[sheetName];
+        const csvData = XLSX.utils.sheet_to_csv(sheet);
+        // Evitamos añadir texto en blanco si la hoja está vacía
+        if (csvData.trim().length > 0) {
+          extractedText += `--- Hoja: ${sheetName} ---\n${csvData}\n\n`;
+        }
+      }
+
+      return extractedText.trim();
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Error extracting legacy spreadsheet from ${filePath}: ${errorMsg}`);
+      throw new Error(`Failed to extract .xls file: ${errorMsg}`);
+    }
   }
 }
