@@ -47,6 +47,8 @@ export class RagController {
     @Body() dto: QueryDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.ragService.query(dto.question, user.id);
+    return this.ragService.query(dto.question, user.id, {
+      documentIds: dto.documentIds,
+    });
   }
 }

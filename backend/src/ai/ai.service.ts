@@ -3,11 +3,16 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 
+interface ChatOptions {
+  preferSmartModel?: boolean;
+}
+
 @Injectable()
 export class AiService implements OnModuleInit {
   private readonly logger = new Logger(AiService.name);
   private readonly openRouterApiKey: string | undefined;
   private readonly openRouterModels: string[];
+  private readonly openRouterSmartModel?: string;
   private readonly openRouterFallbackModels: string[] = [
     'openai/gpt-4o-mini',
     'openai/gpt-3.5-turbo',
@@ -33,6 +38,9 @@ export class AiService implements OnModuleInit {
       'meta-llama/llama-3.3-70b-instruct:free',
       'qwen/qwen3-coder:free',
     ];
+    this.openRouterSmartModel = this.configService
+      .get<string>('OPENROUTER_SMART_MODEL')
+      ?.trim();
     this.openRouterReferer = this.configService.get<string>(
       'OPENROUTER_REFERER',
       'https://github.com/CamiloTriana75/RAG-Backend',
@@ -111,7 +119,11 @@ export class AiService implements OnModuleInit {
   /**
    * Chat completion usando la nube de OpenRouter
    */
-  async chat(question: string, context: string): Promise<string> {
+  async chat(
+    question: string,
+    context: string,
+    options: ChatOptions = {},
+  ): Promise<string> {
     if (!this.openRouterApiKey) {
       throw new Error('No OPENROUTER_API_KEY configurada.');
     }
@@ -139,10 +151,14 @@ ${context}`,
     let lastError: any;
     let retryCount = 0;
     const MAX_RETRIES = 1;
-    const allModelsToTry = [
-      ...this.openRouterModels,
-      ...this.openRouterFallbackModels,
-    ];
+    const modelCandidates = options.preferSmartModel && this.openRouterSmartModel
+      ? [
+          this.openRouterSmartModel,
+          ...this.openRouterModels,
+          ...this.openRouterFallbackModels,
+        ]
+      : [...this.openRouterModels, ...this.openRouterFallbackModels];
+    const allModelsToTry = Array.from(new Set(modelCandidates));
 
     for (let attempt = 0; attempt < allModelsToTry.length; attempt++) {
       const model = allModelsToTry[attempt];
@@ -172,7 +188,9 @@ ${context}`,
         
         const content = response.data?.choices?.[0]?.message?.content;
         if (typeof content === 'string' && content.trim().length > 0) {
-          this.logger.log(`✅ Chat completado exitosamente con ${model}`);
+          this.logger.log(
+            `✅ Chat completado exitosamente con ${model}${options.preferSmartModel ? ' (smart-mode)' : ''}`,
+          );
           return content;
         }
 
