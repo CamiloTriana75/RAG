@@ -210,59 +210,8 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section id="precios" className="page-shell pb-8">
-          <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-            <div className="meta-kicker">
-              <span className="meta-kicker-text">Planes</span>
-            </div>
-            <p className="type-caption max-w-md text-on-surface-variant">
-              Escoge una configuracion inicial y evoluciona con tu nivel de demanda operativa.
-            </p>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-12">
-            <article className="ambient-shadow relative overflow-hidden rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-7 lg:col-span-7">
-              <div className="pointer-events-none absolute -left-8 -top-8 h-24 w-24 rounded-full bg-tertiary-fixed-dim/14 blur-2xl" />
-              <div className="relative">
-                <p className="pill-label mb-3">Plan Growth</p>
-                <h3 className="type-h2 text-primary">$199 / mes</h3>
-                <p className="type-body mt-2 text-on-surface-variant">
-                  Para equipos que digitalizan operaciones documentales de forma recurrente.
-                </p>
-
-                <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                  {[
-                    "Workspace colaborativo",
-                    "Pipeline OCR + RAG",
-                    "Metricas de extraccion",
-                    "Soporte por correo",
-                  ].map((feature) => (
-                    <p key={feature} className="type-caption text-primary">
-                      {feature}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </article>
-
-            <article className="ambient-shadow relative overflow-hidden rounded-2xl border border-primary-fixed/35 bg-primary p-7 text-on-primary lg:col-span-5">
-              <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-primary-fixed/18" />
-              <p className="pill-label mb-3 text-primary-fixed">Plan Enterprise</p>
-              <h3 className="type-h2">Custom</h3>
-              <p className="type-body mt-2 text-primary-fixed">
-                Integracion avanzada, SLA dedicado y arquitectura a medida.
-              </p>
-
-              <div className="mt-5 rounded-xl border border-primary-fixed/25 bg-primary-fixed/8 p-3.5">
-                <p className="type-caption text-primary-fixed">
-                  Incluye onboarding tecnico, politicas de seguridad personalizadas
-                  y acompanamiento de despliegue.
-                </p>
-              </div>
-            </article>
-          </div>
-
-          <div className="ambient-shadow relative mt-10 overflow-hidden rounded-3xl border border-outline-variant/22 bg-surface-container-lowest p-8 text-center">
+        <section className="page-shell pb-16">
+          <div className="ambient-shadow relative overflow-hidden rounded-3xl border border-outline-variant/22 bg-surface-container-lowest p-8 text-center">
             <div className="relative">
               <h3 className="type-h2 text-primary">
                 Convierte documentos en ventaja competitiva

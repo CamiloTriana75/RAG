@@ -416,10 +416,18 @@ export async function deleteDocument(id: string): Promise<{ message: string }> {
 }
 
 /* ─── RAG ──────────────────────────────────────────── */
-export async function queryRAG(question: string): Promise<QueryResponse> {
+export async function queryRAG(
+  question: string,
+  options: { documentIds?: string[]; systemHint?: string } = {},
+): Promise<QueryResponse> {
   if (isDemoModeActive()) {
     const docs = syncDemoDocumentsStatus();
-    const sourceDoc = docs.find((doc) => doc.status === "completed");
+    const completedDocs = docs.filter((doc) => doc.status === "completed");
+    const scopedDocs =
+      Array.isArray(options.documentIds) && options.documentIds.length > 0
+        ? completedDocs.filter((doc) => options.documentIds?.includes(doc.id))
+        : completedDocs;
+    const sourceDoc = scopedDocs[0];
 
     if (!sourceDoc) {
       return {
@@ -450,6 +458,12 @@ export async function queryRAG(question: string): Promise<QueryResponse> {
 
   return apiFetch<QueryResponse>("rag/query", {
     method: "POST",
-    body: JSON.stringify({ question }),
+    body: JSON.stringify({
+      question,
+      ...(Array.isArray(options.documentIds) && options.documentIds.length > 0
+        ? { documentIds: options.documentIds }
+        : {}),
+      ...(options.systemHint ? { systemHint: options.systemHint } : {}),
+    }),
   });
 }

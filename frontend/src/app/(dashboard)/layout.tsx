@@ -40,10 +40,11 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="canvas-gradient min-h-screen">
+    <div className="canvas-gradient h-dvh overflow-hidden">
       <Sidebar />
-      <main className="min-h-screen pb-20 lg:ml-72 lg:pb-0">
-        <header className="sticky top-0 z-30 flex items-center justify-between border-b border-outline-variant/20 bg-surface-container-lowest/80 px-4 py-3 backdrop-blur lg:hidden">
+      <main className="flex h-dvh flex-col lg:ml-72">
+        {/* Mobile header — only visible below lg */}
+        <header className="flex-none flex items-center justify-between border-b border-outline-variant/20 bg-surface-container-lowest/80 px-4 py-3 backdrop-blur lg:hidden">
           <Link href="/" className="type-brand text-primary">
             Cognitive Architect
           </Link>
@@ -51,7 +52,10 @@ export default function DashboardLayout({
             Workspace
           </div>
         </header>
-        {children}
+        {/* Page content — flex-1 so pages fill remaining space */}
+        <div className="flex flex-1 flex-col min-h-0">
+          {children}
+        </div>
       </main>
     </div>
   );

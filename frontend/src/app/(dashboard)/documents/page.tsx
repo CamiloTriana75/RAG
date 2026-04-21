@@ -183,6 +183,7 @@ export default function DocumentsPage() {
   };
 
   return (
+    <div className="flex-1 overflow-y-auto min-h-0 pb-20 lg:pb-0">
     <div className="mx-auto flex w-full max-w-[1360px] flex-col gap-6 px-4 pb-8 pt-6 md:px-6 md:pb-10 md:pt-7 xl:px-8">
       <header className="rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-6 md:p-8 animate-fade-in-up">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -471,6 +472,7 @@ export default function DocumentsPage() {
           </>
         )}
       </section>
+    </div>
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { IsArray, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsArray, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class QueryDto {
@@ -22,4 +22,15 @@ export class QueryDto {
   @IsArray()
   @IsUUID('4', { each: true })
   documentIds?: string[];
+
+  @ApiProperty({
+    required: false,
+    description:
+      'Instrucción adicional que guía el estilo y formato de la respuesta del LLM (e.g. "Genera un resumen ejecutivo", "Extrae campos en tabla").',
+    example: 'Elabora un resumen ejecutivo con viñetas.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1800)
+  systemHint?: string;
 }

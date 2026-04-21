@@ -27,6 +27,7 @@ export interface RagResponse {
 
 interface RagQueryOptions {
   documentIds?: string[];
+  systemHint?: string;
 }
 
 @Injectable()
@@ -152,6 +153,7 @@ export class RagService {
 
     const answer = await this.aiService.chat(question, context, {
       preferSmartModel,
+      systemHint: options.systemHint,
     });
 
     // ── 6. Build response with sources ───────────────

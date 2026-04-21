@@ -49,6 +49,7 @@ export class RagController {
   ) {
     return this.ragService.query(dto.question, user.id, {
       documentIds: dto.documentIds,
+      systemHint: dto.systemHint,
     });
   }
 }

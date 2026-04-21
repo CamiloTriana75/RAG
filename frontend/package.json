@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@thesvg/icons": "^2.1.5",
     "material-symbols": "^0.44.2",
     "next": "16.2.4",
     "react": "19.2.4",

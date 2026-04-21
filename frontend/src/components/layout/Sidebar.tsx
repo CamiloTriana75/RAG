@@ -24,7 +24,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-outline-variant/20 bg-surface-container-low lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col border-r border-outline-variant/20 bg-surface-container-lowest lg:flex">
         <div className="mx-6 mt-6 border-b border-outline-variant/20 pb-4">
           <div className="min-w-0">
             <div className="min-w-0">
@@ -37,7 +37,7 @@ export default function Sidebar() {
         <div className="px-6 pb-4 pt-5">
           <Link
             href="/documents"
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-surface-container-lowest px-4 py-3 text-sm font-semibold text-primary shadow-sm transition-all hover:-translate-y-0.5"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-low px-4 py-3 text-sm font-semibold text-primary shadow-[0_4px_12px_rgba(0,0,0,0.25)] transition-all hover:-translate-y-0.5 hover:border-primary/25"
           >
             <span className="material-symbols-outlined text-base">add</span>
             Nuevo Documento
@@ -72,8 +72,8 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
                   isActive
-                    ? "bg-surface-container-lowest text-primary shadow-[0_10px_24px_rgba(0,25,60,0.08)]"
-                    : "text-on-surface-variant hover:bg-surface-container hover:text-primary"
+                    ? "bg-primary-fixed text-primary shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
+                    : "text-on-surface-variant hover:bg-surface-container-low hover:text-primary"
                 }`}
               >
                 <span className={`material-symbols-outlined text-lg ${isActive ? "fill" : ""}`}>
@@ -87,7 +87,7 @@ export default function Sidebar() {
 
         <div className="border-t border-outline-variant/20 px-4 py-4">
           {userEmail && (
-            <div className="mb-3 rounded-xl bg-surface-container p-3">
+            <div className="mb-3 rounded-xl bg-surface-container-low p-3">
               <p className="pill-label text-on-surface-variant">
                 Conectado como
               </p>
